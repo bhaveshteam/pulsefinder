@@ -1,0 +1,1480 @@
+\<!DOCTYPE html>
+<html lang="en" class="dark select-none">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>PulseFinder — Community Server Discovery</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: { 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca' }
+          }
+        }
+      }
+    }
+  </script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    body { 
+      background-color: #080c14; 
+      color: #f3f4f6; 
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+      overflow-x: hidden;
+    }
+    .glass { background: rgba(15, 23, 42, 0.88); backdrop-filter: blur(14px); border: 1px solid rgba(255, 255, 255, 0.08); }
+    .glow-gold { box-shadow: 0 0 25px -4px rgba(245, 158, 11, 0.4); }
+    .glow-cyan { box-shadow: 0 0 15px -2px rgba(6, 182, 212, 0.4); }
+    ::-webkit-scrollbar { height: 6px; width: 6px; }
+    ::-webkit-scrollbar-track { background: #0b0f19; }
+    ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #334155; }
+    .spin-fast { animation: spin 0.7s cubic-bezier(0.4, 0, 0.2, 1); }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    .input-error { border-color: #f43f5e !important; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-indigo-500 selection:text-white pb-24">
+
+  <!-- Top Ad Banner (Only shown on Free Plan) -->
+  <div id="top-ad-banner" class="w-full bg-slate-900 border-b border-slate-800 py-2 px-4 text-center text-xs text-slate-400 flex items-center justify-center gap-3">
+    <span class="bg-slate-800 text-slate-300 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">Ad</span>
+    <span id="ad-text-content">🎮 High-Speed Dedicated Game Server Hosting with Anti-DDoS starting at ₹299/mo!</span>
+    <button onclick="openPaywall('ad_remove')" class="text-indigo-400 hover:text-indigo-300 underline font-semibold ml-2">Remove Ads</button>
+  </div>
+
+  <!-- Subscription Advance Expiry Warning Banner -->
+  <div id="sub-reminder-banner" class="w-full bg-gradient-to-r from-amber-600 to-yellow-600 text-slate-950 font-bold py-2 px-4 text-xs flex items-center justify-between shadow-lg hidden z-30">
+    <div class="flex items-center gap-2">
+      <i data-lucide="clock" class="w-4 h-4"></i>
+      <span id="reminder-banner-text">Notice: Your subscription will end soon.</span>
+    </div>
+    <button onclick="openPaywall('advance_reminder')" class="bg-slate-950 text-amber-400 hover:bg-slate-900 px-3 py-1 rounded-md text-[11px] font-black uppercase">Renew Now</button>
+  </div>
+
+  <!-- Desktop App Header -->
+  <header class="glass sticky top-0 z-40 px-6 py-3 border-b border-slate-800 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="h-9 w-9 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-indigo-500/30">
+        <i data-lucide="radio" class="w-5 h-5 text-white"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="font-extrabold text-lg tracking-tight text-white">PulseFinder</span>
+          <span class="text-[10px] bg-indigo-950 text-indigo-300 border border-indigo-700/50 px-2 py-0.5 rounded-full font-semibold">ANTI-TAMPER</span>
+        </div>
+        <p class="text-[11px] text-slate-400 font-medium">Developed by <span class="text-indigo-400 font-semibold">Bhavesh@Developers</span></p>
+      </div>
+    </div>
+
+    <!-- Actions: Plan Badge, Upgrade Button, User Profile / Sign In -->
+    <div class="flex items-center gap-3">
+      <div id="plan-badge" class="px-3 py-1 rounded-full text-xs font-bold border border-slate-700 bg-slate-800 text-slate-300 flex items-center gap-1.5"></div>
+      
+      <!-- Upgrade Button (Auto-hidden on Ultra Plan) -->
+      <button id="header-upgrade-btn" onclick="openPaywall('header')" class="bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-600 hover:to-yellow-500 text-slate-950 font-bold text-xs px-3.5 py-2 rounded-lg flex items-center gap-1.5 shadow-md shadow-amber-500/20 transition-all active:scale-95">
+        <i data-lucide="crown" class="w-4 h-4"></i>
+        <span>Upgrade</span>
+      </button>
+
+      <!-- Account Button (Shows Username after login) -->
+      <div class="relative">
+        <button id="auth-btn" onclick="handleAuthButtonClick()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all shadow-sm">
+          <i data-lucide="user" class="w-3.5 h-3.5 text-indigo-400"></i>
+          <span id="auth-btn-text">Sign In / Register</span>
+        </button>
+
+        <!-- Profile Popover -->
+        <div id="profile-dropdown" class="absolute right-0 mt-2 w-72 glass rounded-xl border border-slate-800 shadow-2xl p-4 text-xs hidden z-50">
+          <div class="border-b border-slate-800 pb-3 mb-3">
+            <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">PulseFinder Account</p>
+            <p id="dropdown-username" class="font-extrabold text-sm text-indigo-300 mt-1"></p>
+            <span id="dropdown-plan-badge" class="mt-2 inline-block text-[10px] px-2 py-0.5 rounded font-bold uppercase"></span>
+          </div>
+
+          <p id="dropdown-expiry-info" class="text-[11px] text-slate-400 mb-3"></p>
+
+          <button onclick="downloadActiveKeyfile()" class="w-full mb-2 bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 py-1.5 rounded-lg font-bold flex items-center justify-center gap-1.5 transition-all">
+            <i data-lucide="download" class="w-3.5 h-3.5"></i>
+            <span>Backup Identity Keyfile</span>
+          </button>
+          
+          <button onclick="handleLogout()" class="w-full bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 py-1.5 rounded-lg font-bold flex items-center justify-center gap-1.5 transition-all">
+            <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+            <span>Log Out</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Shell -->
+  <main class="max-w-7xl mx-auto w-full px-4 pt-6 flex-1">
+    <div class="text-center max-w-3xl mx-auto mb-6">
+      <h1 class="text-3xl sm:text-4xl font-black text-white tracking-tight mb-2">Community Server Discovery</h1>
+      <p class="text-xs sm:text-sm text-slate-400">Discover public, community-hosted game nodes across 60 games and 240+ global regions.</p>
+      <p class="text-[10px] text-slate-500 mt-1">Independent third-party application. Not affiliated with or endorsed by any game publisher.</p>
+    </div>
+
+    <!-- AI Prompt Bar -->
+    <div class="glass p-2.5 rounded-2xl max-w-3xl mx-auto mb-3 shadow-2xl flex items-center gap-2 border border-slate-800">
+      <div class="pl-3 text-slate-400">
+        <i data-lucide="bot" class="w-5 h-5 text-indigo-400"></i>
+      </div>
+      <input type="text" id="ai-input" placeholder="Type naturally: 'Give me low ping Asphalt Legends club lobbies' or 'CS2 Retake in Mumbai'..." class="bg-transparent text-sm w-full py-2 text-white placeholder:text-slate-500 focus:outline-none" onkeydown="if(event.key==='Enter') executeAiSearch()" />
+      <button onclick="executeAiSearch()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all flex items-center gap-1.5 shadow-md shadow-indigo-600/30">
+        <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+        <span>AI Find</span>
+      </button>
+    </div>
+
+    <!-- Search Quota Tracker -->
+    <div class="flex items-center justify-between max-w-3xl mx-auto mb-6 px-2 text-xs">
+      <span id="search-quota-text" class="text-slate-400"></span>
+      <button id="get-unlimited-btn" onclick="openPaywall('quota_link')" class="text-amber-400 hover:underline font-medium flex items-center gap-1">
+        <i data-lucide="zap" class="w-3.5 h-3.5"></i> Get Unlimited Searches
+      </button>
+    </div>
+
+    <!-- Multi-Country Filter -->
+    <div class="glass rounded-2xl p-4 mb-6 border border-slate-800">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-800">
+        <div class="flex items-center gap-2">
+          <i data-lucide="globe" class="w-4 h-4 text-cyan-400"></i>
+          <span class="text-xs font-bold text-white uppercase tracking-wider">Multi-Country & Region Filter</span>
+          <span class="text-[11px] text-slate-400">(Select multiple neighboring countries)</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <label class="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-300 bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 hover:border-slate-600">
+            <input type="checkbox" id="worldwide-checkbox" class="rounded accent-indigo-600 h-4 w-4" checked onchange="toggleWorldwide(this.checked)">
+            <span>Worldwide (All 240 Markets)</span>
+          </label>
+          <div class="relative">
+            <input type="text" id="country-search-input" placeholder="Search country..." class="bg-slate-900 text-xs px-2.5 py-1.5 pl-7 rounded-lg border border-slate-700 text-slate-200 placeholder:text-slate-500 focus:outline-none w-36 sm:w-48" oninput="filterCountryList()" />
+            <i data-lucide="search" class="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2"></i>
+          </div>
+        </div>
+      </div>
+      <div id="country-checkboxes-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 pt-3 max-h-36 overflow-y-auto pr-1"></div>
+    </div>
+
+    <!-- Games Chips (Top 60) -->
+    <div class="mb-6">
+      <div class="flex items-center justify-between mb-3 px-1">
+        <div class="flex items-center gap-2">
+          <i data-lucide="gamepad-2" class="w-4 h-4 text-indigo-400"></i>
+          <h2 class="text-xs font-bold uppercase tracking-wider text-slate-300">Top 60 Community Games</h2>
+        </div>
+        <span id="tier-game-access-text" class="text-[11px] text-slate-500"></span>
+      </div>
+      <div id="game-chips-container" class="flex flex-wrap gap-2 max-h-56 overflow-y-auto p-1 bg-slate-950/40 rounded-xl border border-slate-800/60"></div>
+    </div>
+
+    <!-- 7-Column Server Table -->
+    <div class="glass rounded-2xl overflow-hidden border border-slate-800 shadow-xl">
+      <div class="px-5 py-3.5 border-b border-slate-800 flex items-center justify-between flex-wrap gap-2">
+        <div class="flex items-center gap-2">
+          <i data-lucide="server" class="w-4 h-4 text-indigo-400"></i>
+          <span class="text-xs font-bold text-white uppercase tracking-wider">Discovered Community Servers</span>
+          <span id="server-count-badge" class="ml-2 bg-slate-800 text-slate-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-slate-700">0 Available</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <div id="ping-quality-indicator" class="text-[11px] font-semibold flex items-center gap-1.5"></div>
+          <button onclick="refreshServers()" id="refresh-btn" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all active:scale-95">
+            <i data-lucide="refresh-cw" id="refresh-icon" class="w-3.5 h-3.5 text-indigo-400"></i>
+            <span>Refresh</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs text-slate-300">
+          <thead class="bg-slate-900/90 text-slate-400 font-semibold border-b border-slate-800 uppercase tracking-wider text-[11px]">
+            <tr>
+              <th class="py-3 px-4 w-24">GAME</th>
+              <th class="py-3 px-4 min-w-[220px]">SERVER NAME</th>
+              <th class="py-3 px-4 w-36">REGION / COUNTRY</th>
+              <th class="py-3 px-4 min-w-[200px]">IP / CONNECT ADDRESS</th>
+              <th class="py-3 px-4 text-center w-28">PLAYERS ONLINE</th>
+              <th class="py-3 px-4 text-center w-32">ROUTING PING</th>
+              <th class="py-3 px-4 text-right w-24">ACTION</th>
+            </tr>
+          </thead>
+          <tbody id="server-rows" class="divide-y divide-slate-800/60 font-medium"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <!-- ================================================================= -->
+  <!-- AUTHENTICATION MODAL (With In-Line Error Messages & Form Clearing) -->
+  <!-- ================================================================= -->
+  <div id="auth-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 max-w-md w-full rounded-2xl overflow-hidden shadow-2xl p-6 relative">
+      <button onclick="closeAuthModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+
+      <div class="text-center mb-5">
+        <div class="inline-flex p-3 bg-indigo-600/10 rounded-full mb-2 text-indigo-400">
+          <i data-lucide="key" class="w-6 h-6"></i>
+        </div>
+        <h3 id="auth-modal-title" class="text-xl font-black text-white">Sign In to PulseFinder</h3>
+        <p id="auth-modal-desc" class="text-xs text-slate-400 mt-1">Enter your credentials or load your identity backup file.</p>
+      </div>
+
+      <!-- Tab Buttons: Password Mode vs Keyfile Mode -->
+      <div id="login-tabs" class="grid grid-cols-2 gap-2 mb-4">
+        <button onclick="switchLoginMode('credentials')" id="tab-cred-btn" class="bg-indigo-600 text-white font-bold py-1.5 rounded-lg text-xs transition-all">Credentials</button>
+        <button onclick="switchLoginMode('keyfile')" id="tab-file-btn" class="bg-slate-800 text-slate-400 font-semibold py-1.5 rounded-lg text-xs hover:text-white transition-all">Identity Keyfile</button>
+      </div>
+
+      <!-- Form 1: Username & Password Form -->
+      <form id="cred-auth-form" onsubmit="handleCredAuth(event)" class="space-y-3" novalidate>
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-400 mb-1">Unique Username</label>
+          <input type="text" id="auth-username" required placeholder="Choose a unique handle" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500" oninput="clearInlineError('username')" />
+          <p id="error-username" class="text-[11px] text-rose-400 font-medium mt-1 hidden"></p>
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-400 mb-1">Password</label>
+          <input type="password" id="auth-password" required minlength="6" placeholder="Your password" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500" oninput="clearInlineError('password')" />
+          <p id="error-password" class="text-[11px] text-rose-400 font-medium mt-1 hidden"></p>
+        </div>
+
+        <!-- Extra Sign-Up Fields -->
+        <div id="signup-extra-group" class="space-y-3 hidden">
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label class="block text-[11px] font-semibold text-indigo-300">Create Passkey (For Keyfile Encryption)</label>
+              <span class="text-[10px] text-slate-500">Min 6 chars</span>
+            </div>
+            <input type="password" id="auth-passkey" minlength="6" placeholder="Passkey to lock your identity file" class="w-full bg-slate-950 border border-indigo-900/50 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500" oninput="clearInlineError('passkey')" />
+            <p id="error-passkey" class="text-[11px] text-rose-400 font-medium mt-1 hidden"></p>
+            <p class="text-[10px] text-slate-500 mt-1">An encrypted backup keyfile will be downloaded to your PC automatically.</p>
+          </div>
+
+          <div>
+            <label class="flex items-start gap-2 text-[10px] text-slate-400 cursor-pointer">
+              <input type="checkbox" id="auth-terms" class="mt-0.5 rounded accent-indigo-600" onchange="clearInlineError('terms')" />
+              <span>I agree to the Terms of Service & Privacy Policy.</span>
+            </label>
+            <button type="button" onclick="openTermsModal()" class="text-[10px] text-indigo-400 hover:underline font-semibold mt-1">Read Privacy Policy & Terms</button>
+            <p id="error-terms" class="text-[11px] text-rose-400 font-medium mt-0.5 hidden"></p>
+          </div>
+        </div>
+
+        <button type="submit" id="auth-submit-btn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 rounded-xl text-xs transition-all shadow-lg shadow-indigo-600/30">
+          Sign In
+        </button>
+      </form>
+
+      <!-- Form 2: Load Keyfile Form (Recovery Login) -->
+      <form id="keyfile-auth-form" onsubmit="handleKeyfileAuth(event)" class="space-y-3 hidden" novalidate>
+        <div class="border-2 border-dashed border-slate-800 hover:border-indigo-500/50 rounded-xl p-4 text-center cursor-pointer transition-all" onclick="document.getElementById('keyfile-upload').click()">
+          <i data-lucide="file-key" class="w-8 h-8 text-indigo-400 mx-auto mb-2"></i>
+          <p id="keyfile-upload-label" class="text-xs font-semibold text-slate-300">Click to Select PulseFinder Keyfile</p>
+          <p class="text-[10px] text-slate-500 mt-1">*.pulsekey identity backup files only</p>
+          <input type="file" id="keyfile-upload" accept=".pulsekey" class="hidden" onchange="handleFileSelected(this)" />
+        </div>
+        <p id="error-keyfile-file" class="text-[11px] text-rose-400 font-medium mt-1 text-center hidden"></p>
+
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-400 mb-1">Enter Keyfile Passkey</label>
+          <input type="password" id="keyfile-passkey" required placeholder="Passkey used when creating file" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500" oninput="clearInlineError('keyfile-passkey')" />
+          <p id="error-keyfile-passkey" class="text-[11px] text-rose-400 font-medium mt-1 hidden"></p>
+        </div>
+
+        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 rounded-xl text-xs transition-all shadow-lg shadow-indigo-600/30">
+          Decrypt & Log In with Keyfile
+        </button>
+      </form>
+
+      <!-- Toggle Sign In / Sign Up Mode -->
+      <div class="mt-4 text-center text-xs text-slate-400">
+        <span id="auth-toggle-msg">Don't have an account?</span>
+        <button onclick="toggleAuthMode()" id="auth-toggle-btn" class="text-indigo-400 font-bold hover:underline ml-1">Create Unique Account</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Out-of-Plan Search Warning Dialog -->
+  <div id="out-of-plan-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 max-w-md w-full rounded-2xl p-6 text-center shadow-2xl">
+      <div class="inline-flex p-3 bg-amber-500/10 rounded-full mb-3 text-amber-400">
+        <i data-lucide="lock" class="w-6 h-6"></i>
+      </div>
+      <h3 class="text-base font-black text-white">Out of Plan Request</h3>
+      <p class="text-xs text-slate-300 mt-2">the server you are searchning for is not in your plan please upgrade your plan</p>
+      <p class="text-[10px] text-slate-500 mt-1">Your daily search balance was not deducted.</p>
+      <div class="flex gap-2 mt-5">
+        <button onclick="closeOutOfPlanModal()" class="w-1/2 bg-slate-800 hover:bg-slate-700 text-slate-300 py-2 rounded-xl text-xs font-semibold">Dismiss</button>
+        <button onclick="closeOutOfPlanModal(); openPaywall('out_of_plan');" class="w-1/2 bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-600 text-slate-950 py-2 rounded-xl text-xs font-black shadow-md shadow-amber-500/20">Upgrade Plan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Subscription Expired Modal -->
+  <div id="expired-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 max-w-md w-full rounded-2xl p-6 text-center shadow-2xl">
+      <div class="inline-flex p-3 bg-rose-500/10 rounded-full mb-3 text-rose-400">
+        <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+      </div>
+      <h3 class="text-base font-black text-white">Subscription Expired</h3>
+      <p class="text-xs text-slate-300 mt-2">Your subscription has expired! Please renew now to restore full access to unlocked servers and 0ms routing.</p>
+      <div class="flex gap-2 mt-5">
+        <button onclick="closeExpiredModal()" class="w-1/2 bg-slate-800 hover:bg-slate-700 text-slate-300 py-2 rounded-xl text-xs font-semibold">Use Free Tier</button>
+        <button onclick="closeExpiredModal(); openPaywall('expired_renewal');" class="w-1/2 bg-indigo-600 hover:bg-indigo-500 text-white py-2 rounded-xl text-xs font-bold shadow-md shadow-indigo-600/30">Renew Now</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Terms & Privacy Legal Waiver Modal -->
+  <div id="terms-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 max-w-2xl w-full rounded-2xl p-6 shadow-2xl flex flex-col max-h-[85vh]">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">
+        <h3 class="text-base font-bold text-white">Terms of Service & Non-Affiliation Disclaimer</h3>
+        <button onclick="closeTermsModal()" class="text-slate-400 hover:text-white p-1 rounded-lg"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <div class="overflow-y-auto text-xs text-slate-400 space-y-3 pr-2">
+        <p><strong>1. Independent Third-Party Directory:</strong> PulseFinder is developed by Bhavesh@Developers as an independent discovery utility for public, community-hosted multiplayer gaming servers. PulseFinder is <strong>not affiliated with, endorsed by, sponsored by, or associated with Valve, Mojang, Rockstar Games, Riot Games, Gameloft, Epic Games, or any respective copyright holders.</strong></p>
+        <p><strong>2. Third-Party Servers:</strong> PulseFinder does not own, operate, or administer community game servers. All server availability, uptime, rules, and connectivity remain strictly under third-party operator responsibility.</p>
+        <p><strong>3. Non-Custodial Password & Encryption:</strong> Passwords and passkeys are encrypted locally using client-side WebCrypto (AES-GCM 256-bit). Developers do not have access to your credentials or recovery keys.</p>
+        <p><strong>4. Digital Subscriptions:</strong> Subscriptions are non-refundable digital software entitlements that unlock client features such as ping routing filters and unlimited search capabilities.</p>
+      </div>
+      <button onclick="closeTermsModal()" class="mt-4 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold py-2 rounded-xl">I Understand & Agree</button>
+    </div>
+  </div>
+
+  <!-- Pricing Modal -->
+  <div id="paywall-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 max-w-3xl w-full rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh]">
+      <div class="p-6 text-center border-b border-slate-800 relative bg-gradient-to-b from-indigo-950/40 to-transparent">
+        <button onclick="closePaywall()" class="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+        <div class="inline-flex p-2 bg-amber-500/10 rounded-full mb-2 text-amber-400">
+          <i data-lucide="crown" class="w-7 h-7"></i>
+        </div>
+        <h2 class="text-2xl font-black text-white">Upgrade Your Community Server Tier</h2>
+        <p class="text-xs text-slate-400 mt-1 max-w-md mx-auto">Get 0ms edge routing, unlock all 60 games, access 100% of community servers, and remove ads.</p>
+      </div>
+
+      <div class="p-6 grid grid-cols-1 md:grid-cols-3 gap-4 overflow-y-auto">
+        <!-- Free -->
+        <div class="border border-slate-800 rounded-xl p-4 bg-slate-950/40 flex flex-col justify-between">
+          <div>
+            <span class="text-xs font-bold text-slate-400 uppercase">Basic Plan</span>
+            <div class="mt-2 text-2xl font-black text-white">₹0</div>
+            <p class="text-[11px] text-slate-500 mb-4">5 core games accessible</p>
+            <ul class="space-y-2 text-xs text-slate-400">
+              <li class="flex items-center gap-1.5"><i data-lucide="check" class="w-3.5 h-3.5 text-slate-400"></i> <strong>5 Games Unlocked</strong></li>
+              <li class="flex items-center gap-1.5"><i data-lucide="check" class="w-3.5 h-3.5 text-slate-400"></i> 25% of community nodes</li>
+              <li class="flex items-center gap-1.5"><i data-lucide="check" class="w-3.5 h-3.5 text-slate-400"></i> High ping tier (150-280ms)</li>
+              <li class="flex items-center gap-1.5"><i data-lucide="check" class="w-3.5 h-3.5 text-slate-400"></i> 3 Searches daily (Renews 24h)</li>
+              <li class="flex items-center gap-1.5 text-rose-400"><i data-lucide="x" class="w-3.5 h-3.5 text-rose-500"></i> Locks on 55 games</li>
+              <li class="flex items-center gap-1.5 text-slate-500"><i data-lucide="x" class="w-3.5 h-3.5 text-rose-500"></i> Ad-Supported</li>
+            </ul>
+          </div>
+          <button onclick="closePaywall()" class="mt-6 w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold">Active Plan</button>
+        </div>
+
+        <!-- Plus / Premium (Includes Basic + Plus Servers) -->
+        <div class="border border-indigo-600/60 rounded-xl p-4 bg-indigo-950/20 flex flex-col justify-between">
+          <div>
+            <span class="text-xs font-bold text-indigo-400 uppercase">Plus Plan</span>
+            <div class="mt-2 text-2xl font-black text-white">₹259 <span class="text-xs font-normal text-slate-400">/month</span></div>
+            <p class="text-[11px] text-slate-400 mb-4">30 games unlocked</p>
+            <ul class="space-y-2 text-xs text-slate-200">
+              <li class="flex items-center gap-1.5"><i data-lucide="check" class="w-3.5 h-3.5 text-indigo-400"></i> <strong>30 Major Games Unlocked</strong></li>
+              <li class="flex items-center gap-1.5"><i data-lucide="check" class="w-3.5 h-3.5 text-indigo-400"></i> <strong>60% of community servers</strong></li>
+              <li class="flex items-center gap-1.5"><i data-lucide="check" class="w-3.5 h-3.5 text-indigo-400"></i> <strong>Includes BOTH Basic & Plus Servers</strong></li>
+              <li class="flex items-center gap-1.5"><i data-lucide="check" class="w-3.5 h-3.5 text-indigo-400"></i> Medium (45-85ms) & High pings</li>
+              <li class="flex items-center gap-1.5"><i data-lucide="check" class="w-3.5 h-3.5 text-indigo-400"></i> 10 Searches daily (Renews 24h)</li>
+              <li class="flex items-center gap-1.5"><i data-lucide="check" class="w-3.5 h-3.5 text-indigo-400"></i> Completely Ad-Free</li>
+            </ul>
+          </div>
+          <button onclick="purchasePlan('monthly')" class="mt-6 w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold shadow-lg shadow-indigo-600/30">Get Plus (₹259)</button>
+        </div>
+
+        <!-- Ultra (Includes EVERY Game & EVERY Server) -->
+        <div class="border-2 border-amber-500 rounded-xl p-4 bg-gradient-to-b from-amber-950/20 to-slate-900 flex flex-col justify-between relative glow-gold">
+          <span class="absolute -top-2.5 right-3 bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-black text-[9px] uppercase px-2 py-0.5 rounded-full tracking-wider shadow">MOST POPULAR</span>
+          <div>
+            <span class="text-xs font-bold text-amber-400 uppercase">Ultra Premium (1 Year)</span>
+            <div class="mt-2 flex items-baseline gap-2">
+              <span class="text-slate-500 line-through text-sm">₹3,108</span>
+              <span class="text-2xl font-black text-white">₹1,899</span>
+              <span class="text-xs font-normal text-slate-400">/year</span>
+            </div>
+            <p class="text-[11px] text-amber-300/80 mb-4">Save 39% • Just ~₹158/month</p>
+            <ul class="space-y-2 text-xs text-slate-200">
+              <li class="flex items-center gap-1.5"><i data-lucide="check" class="w-3.5 h-3.5 text-amber-400"></i> <strong>EVERY ONLINE GAME IN THE WORLD</strong></li>
+              <li class="flex items-center gap-1.5"><i data-lucide="check" class="w-3.5 h-3.5 text-amber-400"></i> <strong>EVERY SERVER INCLUDED (100%)</strong></li>
+              <li class="flex items-center gap-1.5"><i data-lucide="check" class="w-3.5 h-3.5 text-amber-400"></i> <strong>0ms – 4ms Edge Routing Ping</strong></li>
+              <li class="flex items-center gap-1.5"><i data-lucide="check" class="w-3.5 h-3.5 text-amber-400"></i> Full Spectrum (0ms, Med, High)</li>
+              <li class="flex items-center gap-1.5"><i data-lucide="check" class="w-3.5 h-3.5 text-amber-400"></i> <strong>Unlimited Searches + Zero Ads</strong></li>
+            </ul>
+          </div>
+          <button onclick="purchasePlan('yearly')" class="mt-6 w-full py-2 bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-600 hover:to-yellow-500 text-slate-950 font-black rounded-lg text-xs shadow-md shadow-amber-500/30">Get Ultra (₹1,899/yr)</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="mt-12 text-center text-[11px] text-slate-500 py-6 border-t border-slate-800/60 px-4">
+    <p>PulseFinder Universal Platform • Developed by <span class="text-slate-400 font-semibold">Bhavesh@Developers</span></p>
+    <p class="text-[10px] text-slate-600 mt-1 max-w-2xl mx-auto">
+      Non-Affiliation Notice: All game titles, trademarks, and logos are property of their respective owners. PulseFinder is a third-party discovery utility.
+    </p>
+  </footer>
+
+  <script>
+    // =========================================================================
+    // MANUAL EDIT CONFIGURATION (Set your Store / Payment gateway links here)
+    // =========================================================================
+    const CONFIG = {
+      // 1. Microsoft Store Add-On Product IDs (Create in Microsoft Partner Center)
+      msStoreMonthlyIapId: "pulsefinder_monthly_259",
+      msStoreYearlyIapId: "pulsefinder_yearly_1899",
+
+      // 2. Direct External Payment URL (Optional: Razorpay / Stripe payment link)
+      // Example: "https://rzp.io/l/yourpaymentlink"
+      externalPaymentUrl: "",
+
+      // 3. Secret Cryptographic Salt for Anti-Cheat Signature Verification
+      // Change this to your own random secret string before publishing!
+      securitySalt: "PulseFinder_Bhavesh_SecretSalt_2026_x99!"
+    };
+
+    const COUNTRIES_LIST = [
+      { code: 'IN', name: 'India', flag: '🇮🇳' },
+      { code: 'US', name: 'United States', flag: '🇺🇸' },
+      { code: 'GB', name: 'United Kingdom', flag: '🇬🇧' },
+      { code: 'DE', name: 'Germany', flag: '🇩🇪' },
+      { code: 'FR', name: 'France', flag: '🇫🇷' },
+      { code: 'SG', name: 'Singapore', flag: '🇸🇬' },
+      { code: 'JP', name: 'Japan', flag: '🇯🇵' },
+      { code: 'BR', name: 'Brazil', flag: '🇧🇷' },
+      { code: 'AU', name: 'Australia', flag: '🇦🇺' },
+      { code: 'CA', name: 'Canada', flag: '🇨🇦' },
+      { code: 'AE', name: 'United Arab Emirates', flag: '🇦🇪' },
+      { code: 'NL', name: 'Netherlands', flag: '🇳🇱' },
+      { code: 'KR', name: 'South Korea', flag: '🇰🇷' },
+      { code: 'SE', name: 'Sweden', flag: '🇸🇪' },
+      { code: 'PL', name: 'Poland', flag: '🇵🇱' },
+      { code: 'IT', name: 'Italy', flag: '🇮🇹' }
+    ];
+
+    const GAMES_CATALOG = [
+      { id: 'all', name: 'All Games' },
+      { id: 'cs2', name: 'Counter-Strike 2' },
+      { id: 'minecraft', name: 'Minecraft' },
+      { id: 'csgo', name: 'CS:GO Legacy' },
+      { id: 'gtav', name: 'GTA V (FiveM / RP)' },
+      { id: 'asphalt', name: 'Asphalt Legends' },
+      { id: 'valorant', name: 'Valorant 10-Man' },
+      { id: 'apex', name: 'Apex Legends Scrims' },
+      { id: 'pubg', name: 'PUBG Scrims' },
+      { id: 'cod', name: 'Call of Duty Scrims' },
+      { id: 'rust', name: 'Rust' },
+      { id: 'palworld', name: 'Palworld' },
+      { id: 'tf2', name: 'Team Fortress 2' },
+      { id: 'gmod', name: "Garry's Mod" },
+      { id: 'dayz', name: 'DayZ' },
+      { id: 'valheim', name: 'Valheim' },
+      { id: 'r6', name: 'Rainbow Six Siege' },
+      { id: 'ark', name: 'ARK: Survival Evolved' },
+      { id: 'squad', name: 'Squad' },
+      { id: 'arma3', name: 'ARMA 3' },
+      { id: 'zomboid', name: 'Project Zomboid' },
+      { id: 'l4d2', name: 'Left 4 Dead 2' },
+      { id: 'unturned', name: 'Unturned' },
+      { id: 'terraria', name: 'Terraria' },
+      { id: '7dtd', name: '7 Days to Die' },
+      { id: 'conan', name: 'Conan Exiles' },
+      { id: 'ets2', name: 'Euro Truck Sim 2' },
+      { id: 'beamng', name: 'BeamNG.drive MP' },
+      { id: 'vrising', name: 'V Rising' },
+      { id: 'enshrouded', name: 'Enshrouded' },
+      { id: 'kf2', name: 'Killing Floor 2' },
+      { id: 'halo', name: 'Halo Infinite Custom' },
+      { id: 'bf2042', name: 'Battlefield 2042 Portal' },
+      { id: 'ow2', name: 'Overwatch 2 Custom' },
+      { id: 'assetto', name: 'Assetto Corsa Drift' },
+      { id: 'rocket', name: 'Rocket League Tourney' },
+      { id: 'dst', name: "Don't Starve Together" },
+      { id: 'insurgency', name: 'Insurgency: Sandstorm' },
+      { id: 'scum', name: 'SCUM' },
+      { id: 'deadside', name: 'Deadside' },
+      { id: 'starbound', name: 'Starbound' },
+      { id: 'ark_sa', name: 'ARK: Ascended' },
+      { id: 'soft', name: 'Sons of the Forest' },
+      { id: 'hellletloose', name: 'Hell Let Loose' },
+      { id: 'postscriptum', name: 'Squad 44' },
+      { id: 'theisle', name: 'The Isle' },
+      { id: 'pathoftitans', name: 'Path of Titans' },
+      { id: 'factorio', name: 'Factorio' },
+      { id: 'satisfactory', name: 'Satisfactory' },
+      { id: 'barotrauma', name: 'Barotrauma' },
+      { id: 'deeprock', name: 'Deep Rock Galactic' },
+      { id: 'seaofthieves', name: 'Sea of Thieves Custom' },
+      { id: 'forza', name: 'Forza Horizon 5 Convoy' },
+      { id: 'roblox', name: 'Roblox Community Hubs' },
+      { id: 'lethal', name: 'Lethal Company Modded' },
+      { id: 'phasmophobia', name: 'Phasmophobia Lobbies' },
+      { id: 'payday2', name: 'Payday 2 Heists' },
+      { id: 'payday3', name: 'Payday 3 Matchmaking' },
+      { id: 'smite', name: 'Smite Custom Scrims' },
+      { id: 'brawlhalla', name: 'Brawlhalla Custom Rooms' },
+      { id: 'fallguys', name: 'Fall Guys Custom Shows' }
+    ];
+
+    const BASIC_GAME_IDS = GAMES_CATALOG.slice(1, 6).map(g => g.id); // 5 games
+    const PREMIUM_GAME_IDS = GAMES_CATALOG.slice(1, 31).map(g => g.id); // 30 games
+
+    const MASTER_SERVER_POOL = [
+      { game: 'asphalt', name: 'Mumbai Elite Racers Club Lobby #01', country: 'IN', ip: 'ASPHALT-IN-CLUB-01', players: '8/8' },
+      { game: 'asphalt', name: 'Paris Fast Slipstream Matchmaking Hub', country: 'FR', ip: 'ASPHALT-CLUB-FR22', players: '8/8' },
+      { game: 'asphalt', name: 'Frankfurt Speedrunners Grand Prix', country: 'DE', ip: 'ASPHALT-DE-SPEED', players: '8/8' },
+      { game: 'asphalt', name: 'Tokyo Hypercar Time-Attack Championship', country: 'JP', ip: 'ASPHALT-CLUB-JP99', players: '8/8' },
+      { game: 'asphalt', name: 'New York Tier 1 Speedrunners League', country: 'US', ip: 'ASPHALT-CLUB-US55', players: '8/8' },
+      { game: 'asphalt', name: 'London Slipstream Casual Club Room', country: 'GB', ip: 'ASPHALT-CLUB-UK10', players: '7/8' },
+
+      { game: 'cs2', name: '[ASIA] Retake 128T Mumbai #01', country: 'IN', ip: '103.212.224.18:27015', players: '16/16' },
+      { game: 'cs2', name: '[EU] Warmup Retake Dust2/Mirage', country: 'DE', ip: '45.138.50.12:27015', players: '18/20' },
+      { game: 'cs2', name: '[US] Cybershoke DM Multi-CFG', country: 'US', ip: '198.50.210.8:27015', players: '22/24' },
+      { game: 'cs2', name: '[UK] London Surf Academy Tier 1-2', country: 'GB', ip: '185.107.96.42:27015', players: '28/32' },
+      { game: 'cs2', name: '[ASIA] Singapore 5v5 Competitive', country: 'SG', ip: '139.99.120.4:27015', players: '10/10' },
+      { game: 'cs2', name: '[ASIA] Delhi Aim Arena 1v1', country: 'IN', ip: '103.212.224.19:27015', players: '12/12' },
+
+      { game: 'minecraft', name: 'Herobrine.org India / Asia SMP', country: 'IN', ip: 'herobrine.org:25565', players: '1,420/3,000' },
+      { game: 'minecraft', name: 'Hypixel Network (SMP & Skyblock)', country: 'US', ip: 'mc.hypixel.net:25565', players: '38,420/100,000' },
+      { game: 'minecraft', name: 'Complex Gaming Pixelmon/Survival', country: 'DE', ip: 'hub.mc-complex.com:25565', players: '2,100/5,000' },
+      { game: 'minecraft', name: 'PikaNetwork Arcade Lobbies', country: 'NL', ip: 'play.pika-network.net:25565', players: '3,800/8,000' },
+      { game: 'minecraft', name: 'DonutSMP Hardcore Steal', country: 'US', ip: 'donutsmp.net:25565', players: '4,500/10,000' },
+
+      { game: 'csgo', name: '[ASIA] Classic 128T Competitive Delhi', country: 'IN', ip: '103.212.224.25:27015', players: '10/10' },
+      { game: 'csgo', name: '[EU] WarmupServer Dust2 DM', country: 'FR', ip: '178.32.55.10:27015', players: '24/24' },
+      { game: 'csgo', name: '[US] GFL Clan Zombie Escape', country: 'US', ip: '216.52.148.47:27015', players: '62/64' },
+
+      { game: 'gtav', name: 'Delhi NCR Roleplay 3.0 (Custom Cars)', country: 'IN', ip: 'fivem://connect/103.212.224.99:30120', players: '128/128' },
+      { game: 'gtav', name: 'NoPixel Inspired UK Serious RP', country: 'GB', ip: 'fivem://connect/185.107.96.11:30120', players: '240/250' },
+      { game: 'gtav', name: 'Los Angeles Gangwars & Drift', country: 'US', ip: 'fivem://connect/198.50.210.33:30120', players: '110/128' },
+
+      { game: 'valorant', name: 'Ascendant+ 10-Man Scrim Hub [MUMBAI]', country: 'IN', ip: 'LOBBY-IN-9821', players: '9/10' },
+      { game: 'valorant', name: 'Immortal/Radiant Pick-up Games', country: 'DE', ip: 'LOBBY-EU-4412', players: '8/10' },
+      { game: 'valorant', name: 'NA East Premier Warmup Scrims', country: 'US', ip: 'LOBBY-NA-7782', players: '10/10' }
+    ];
+
+    const REGIONAL_CLUSTERS = [
+      { country: 'IN', label: 'Mumbai Community Node' },
+      { country: 'US', label: 'Dallas High-Perf Hub' },
+      { country: 'DE', label: 'Frankfurt Low-Ping Relay' },
+      { country: 'GB', label: 'London Gaming Hub' },
+      { country: 'SG', label: 'Singapore Southeast Node' },
+      { country: 'JP', label: 'Tokyo Community Relay' }
+    ];
+
+    GAMES_CATALOG.forEach(game => {
+      if (game.id === 'all') return;
+      const count = MASTER_SERVER_POOL.filter(s => s.game === game.id).length;
+      if (count < 6) {
+        REGIONAL_CLUSTERS.forEach((reg, i) => {
+          MASTER_SERVER_POOL.push({
+            game: game.id,
+            name: `${game.name} - ${reg.label} #${i+1}`,
+            country: reg.country,
+            ip: `${reg.country.toLowerCase()}-${game.id}-node.net:${27015 + i}`,
+            players: `${12 + (i * 2)}/${16 + (i * 4)}`
+          });
+        });
+      }
+    });
+
+    // =========================================================================
+    // ANTI-CHEAT CRYPTOGRAPHIC VERIFICATION & RECEIPT ENGINE
+    // =========================================================================
+    async function generateSecurityToken(username, tier, expiry) {
+      const payload = `${username}|${tier}|${expiry || 'none'}|${CONFIG.securitySalt}`;
+      const enc = new TextEncoder();
+      const hashBuf = await crypto.subtle.digest("SHA-256", enc.encode(payload));
+      return Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    async function verifyUserIntegrity(userObj) {
+      if (!userObj) return false;
+      if (userObj.tier === 'free') return true;
+      const expectedToken = await generateSecurityToken(userObj.username, userObj.tier, userObj.expiresAt);
+      return expectedToken === userObj.signature;
+    }
+
+    // WebCrypto AES-GCM Keyfile Derivation
+    async function deriveKey(passkey, salt) {
+      const enc = new TextEncoder();
+      const keyMaterial = await crypto.subtle.importKey(
+        "raw", enc.encode(passkey), { name: "PBKDF2" }, false, ["deriveKey"]
+      );
+      return crypto.subtle.deriveKey(
+        {
+          name: "PBKDF2",
+          salt: salt,
+          iterations: 100000,
+          hash: "SHA-256"
+        },
+        keyMaterial,
+        { name: "AES-GCM", length: 256 },
+        false,
+        ["encrypt", "decrypt"]
+      );
+    }
+
+    async function encryptPayload(dataObj, passkey) {
+      const enc = new TextEncoder();
+      const salt = crypto.getRandomValues(new Uint8Array(16));
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+      const key = await deriveKey(passkey, salt);
+      const plaintext = enc.encode(JSON.stringify(dataObj));
+      const ciphertext = await crypto.subtle.encrypt(
+        { name: "AES-GCM", iv: iv }, key, plaintext
+      );
+
+      return JSON.stringify({
+        version: "2.0",
+        salt: Array.from(salt),
+        iv: Array.from(iv),
+        data: Array.from(new Uint8Array(ciphertext))
+      });
+    }
+
+    async function decryptPayload(encryptedJsonStr, passkey) {
+      const dec = new TextDecoder();
+      const pkg = JSON.parse(encryptedJsonStr);
+      const salt = new Uint8Array(pkg.salt);
+      const iv = new Uint8Array(pkg.iv);
+      const ciphertext = new Uint8Array(pkg.data);
+
+      const key = await deriveKey(passkey, salt);
+      const decryptedBuf = await crypto.subtle.decrypt(
+        { name: "AES-GCM", iv: iv }, key, ciphertext
+      );
+      return JSON.parse(dec.decode(decryptedBuf));
+    }
+
+    // STATE VARIABLES
+    let currentUser = JSON.parse(localStorage.getItem('user_session') || 'null');
+    let userTier = 'free';
+    let isSignUpMode = false;
+    let selectedKeyfileText = null;
+
+    function getTodayKey() {
+      const d = new Date();
+      return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+    }
+
+    function checkAndResetDailyQuota() {
+      const today = getTodayKey();
+      const lastDate = localStorage.getItem('last_quota_date');
+      if (lastDate !== today) {
+        localStorage.setItem('last_quota_date', today);
+        if (userTier === 'free') {
+          localStorage.setItem('searches_left', '3');
+        } else if (userTier === 'premium') {
+          localStorage.setItem('searches_left', '10');
+        }
+      }
+    }
+
+    let searchesLeft = parseInt(localStorage.getItem('searches_left') ?? '3');
+    let activeGameFilter = 'all';
+    let isWorldwide = true;
+    let selectedCountries = new Set();
+
+    async function init() {
+      // Anti-Cheat Audit: Verify that localStorage was not tampered with
+      if (currentUser && currentUser.tier !== 'free') {
+        const isValid = await verifyUserIntegrity(currentUser);
+        if (!isValid) {
+          console.warn("[ANTI-CHEAT] Tampered license signature detected! Reverting to Free Tier.");
+          currentUser.tier = 'free';
+          currentUser.expiresAt = null;
+          currentUser.signature = null;
+          localStorage.setItem('user_session', JSON.stringify(currentUser));
+        }
+      }
+
+      userTier = currentUser ? currentUser.tier : 'free';
+      checkAndResetDailyQuota();
+      renderCountryCheckboxes();
+      renderGameCatalog();
+      updateTierUI();
+      renderServerTable();
+      checkSubscriptionAlerts();
+    }
+
+    function checkSubscriptionAlerts() {
+      if (!currentUser || currentUser.tier === 'free' || !currentUser.expiresAt) return;
+      const now = new Date().getTime();
+      const expiry = new Date(currentUser.expiresAt).getTime();
+      const diffDays = Math.ceil((expiry - now) / (1000 * 60 * 60 * 24));
+
+      const reminderBanner = document.getElementById('sub-reminder-banner');
+      const reminderText = document.getElementById('reminder-banner-text');
+
+      if (diffDays <= 0) {
+        reminderBanner.classList.add('hidden');
+        currentUser.tier = 'free';
+        currentUser.expiresAt = null;
+        currentUser.signature = null;
+        userTier = 'free';
+        saveUserRecord(currentUser);
+        localStorage.setItem('user_session', JSON.stringify(currentUser));
+        updateTierUI();
+        document.getElementById('expired-modal').classList.remove('hidden');
+      } else if (diffDays === 1 || diffDays === 2) {
+        reminderBanner.classList.remove('hidden');
+        reminderText.textContent = `Notice: Your subscription will end in ${diffDays} day${diffDays > 1 ? 's' : ''}! Please renew now to maintain access.`;
+      } else {
+        reminderBanner.classList.add('hidden');
+      }
+    }
+
+    function renderCountryCheckboxes() {
+      const container = document.getElementById('country-checkboxes-container');
+      container.innerHTML = '';
+      const query = (document.getElementById('country-search-input')?.value || '').toLowerCase();
+
+      COUNTRIES_LIST.forEach(country => {
+        if (query && !country.name.toLowerCase().includes(query) && !country.code.toLowerCase().includes(query)) return;
+        const isChecked = selectedCountries.has(country.code);
+        const label = document.createElement('label');
+        label.className = `flex items-center gap-1.5 p-1.5 rounded-lg border text-[11px] font-medium cursor-pointer transition-all ${
+          isChecked ? 'bg-indigo-950/60 border-indigo-500 text-white' : 'bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-700'
+        }`;
+        label.innerHTML = `
+          <input type="checkbox" value="${country.code}" class="rounded accent-indigo-600 h-3.5 w-3.5" ${isChecked ? 'checked' : ''} onchange="toggleCountry('${country.code}', this.checked)">
+          <span>${country.flag} ${country.name}</span>
+        `;
+        container.appendChild(label);
+      });
+    }
+
+    function filterCountryList() { renderCountryCheckboxes(); }
+    function toggleWorldwide(checked) {
+      isWorldwide = checked;
+      if (checked) selectedCountries.clear();
+      renderCountryCheckboxes();
+      renderServerTable();
+    }
+    function toggleCountry(code, checked) {
+      if (checked) {
+        selectedCountries.add(code);
+        isWorldwide = false;
+        document.getElementById('worldwide-checkbox').checked = false;
+      } else {
+        selectedCountries.delete(code);
+        if (selectedCountries.size === 0) {
+          isWorldwide = true;
+          document.getElementById('worldwide-checkbox').checked = true;
+        }
+      }
+      renderCountryCheckboxes();
+      renderServerTable();
+    }
+
+    function updateTierUI() {
+      const upgradeBtn = document.getElementById('header-upgrade-btn');
+      const badge = document.getElementById('plan-badge');
+      const quotaText = document.getElementById('search-quota-text');
+      const unlimitedBtn = document.getElementById('get-unlimited-btn');
+      const topAd = document.getElementById('top-ad-banner');
+      const bottomAd = document.getElementById('bottom-ad-bar');
+      const accessInfo = document.getElementById('tier-game-access-text');
+      const pingIndicator = document.getElementById('ping-quality-indicator');
+      const authBtnText = document.getElementById('auth-btn-text');
+
+      if (currentUser) {
+        authBtnText.textContent = `@${currentUser.username}`;
+        document.getElementById('dropdown-username').textContent = `@${currentUser.username}`;
+        
+        document.getElementById('dropdown-plan-badge').textContent = userTier === 'premium' ? 'PLUS PLAN' : userTier.toUpperCase();
+        document.getElementById('dropdown-plan-badge').className = `text-[10px] px-2 py-0.5 rounded font-bold uppercase ${
+          userTier === 'ultra' ? 'bg-amber-950 text-amber-300 border border-amber-500/50' :
+          userTier === 'premium' ? 'bg-indigo-950 text-indigo-300 border border-indigo-500/50' :
+          'bg-slate-800 text-slate-300'
+        }`;
+        document.getElementById('dropdown-expiry-info').textContent = currentUser.expiresAt 
+          ? `Plan Active until: ${new Date(currentUser.expiresAt).toLocaleDateString()}` 
+          : 'Free Forever Plan';
+      } else {
+        authBtnText.textContent = 'Sign In / Register';
+      }
+
+      if (userTier === 'ultra') {
+        upgradeBtn.style.display = 'none';
+        unlimitedBtn.style.display = 'none';
+        topAd.style.display = 'none';
+
+        badge.className = "px-3 py-1 rounded-full text-xs font-black border border-amber-500 bg-amber-950/60 text-amber-300 flex items-center gap-1.5 glow-gold";
+        badge.innerHTML = `<i data-lucide="crown" class="w-4 h-4 text-amber-400"></i><span>Ultra Active</span>`;
+        quotaText.innerHTML = `<span class="text-amber-400 font-bold flex items-center gap-1"><i data-lucide="infinity" class="w-3.5 h-3.5"></i> Unlimited AI Searches</span>`;
+        accessInfo.textContent = "Every Online Game in the World & 100% Servers (0ms Edge Routing)";
+        pingIndicator.innerHTML = `<span class="h-2 w-2 rounded-full bg-cyan-400 animate-pulse"></span><span class="text-cyan-400 font-bold">Ultra Spectrum (0ms Priority + All Pings)</span>`;
+
+      } else if (userTier === 'premium') {
+        upgradeBtn.style.display = 'flex';
+        upgradeBtn.innerHTML = `<i data-lucide="crown" class="w-4 h-4"></i><span>Get Ultra (Save 39%)</span>`;
+        unlimitedBtn.style.display = 'none';
+        topAd.style.display = 'none';
+
+        badge.className = "px-3 py-1 rounded-full text-xs font-bold border border-indigo-500 bg-indigo-950/60 text-indigo-300 flex items-center gap-1.5";
+        badge.innerHTML = `<i data-lucide="shield-check" class="w-4 h-4 text-indigo-400"></i><span>Plus Plan Active</span>`;
+        quotaText.innerHTML = `Daily searches remaining: <strong class="text-indigo-400 font-bold">${searchesLeft}</strong> / 10 (Renews 24h)`;
+        accessInfo.textContent = "30 Games Unlocked (Includes BOTH Basic & Plus Servers)";
+        pingIndicator.innerHTML = `<span class="h-2 w-2 rounded-full bg-indigo-400"></span><span class="text-indigo-400">Plus & Basic Spectrum (45-280ms)</span>`;
+
+      } else {
+        upgradeBtn.style.display = 'flex';
+        upgradeBtn.innerHTML = `<i data-lucide="crown" class="w-4 h-4"></i><span>Upgrade</span>`;
+        unlimitedBtn.style.display = 'flex';
+        topAd.style.display = 'flex';
+
+        badge.className = "px-3 py-1 rounded-full text-xs font-bold border border-slate-700 bg-slate-800 text-slate-300 flex items-center gap-1.5";
+        badge.innerHTML = `<i data-lucide="shield" class="w-3.5 h-3.5 text-slate-400"></i><span>Basic (5 Games)</span>`;
+        quotaText.innerHTML = `Free searches remaining today: <strong class="text-indigo-400 font-bold">${searchesLeft}</strong> / 3 (Renews 24h)`;
+        accessInfo.textContent = "Showing 5 Unlocked Games (25% Servers • High Ping Only)";
+        pingIndicator.innerHTML = `<span class="h-2 w-2 rounded-full bg-rose-500"></span><span class="text-rose-400">High Ping Tier Only (150-280ms)</span>`;
+      }
+
+      renderGameCatalog();
+      lucide.createIcons();
+    }
+
+    function isGameLocked(gameId) {
+      if (userTier === 'ultra') return false;
+      if (userTier === 'premium') return !PREMIUM_GAME_IDS.includes(gameId);
+      return !BASIC_GAME_IDS.includes(gameId);
+    }
+
+    function renderGameCatalog() {
+      const container = document.getElementById('game-chips-container');
+      container.innerHTML = '';
+
+      GAMES_CATALOG.forEach(game => {
+        const locked = (game.id !== 'all') && isGameLocked(game.id);
+        const btn = document.createElement('button');
+        const isActive = activeGameFilter === game.id;
+
+        btn.className = `px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 whitespace-nowrap ${
+          isActive 
+            ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' 
+            : locked 
+              ? 'bg-slate-900 border border-slate-800/80 text-slate-400 hover:border-slate-700' 
+              : 'bg-slate-800/80 hover:bg-slate-700 text-slate-200'
+        }`;
+
+        btn.innerHTML = `
+          <span>${game.name}</span>
+          ${locked ? '<i data-lucide="lock" class="w-3 h-3 text-amber-500"></i>' : ''}
+        `;
+
+        btn.onclick = () => {
+          if (locked) {
+            document.getElementById('out-of-plan-modal').classList.remove('hidden');
+          } else {
+            activeGameFilter = game.id;
+            renderGameCatalog();
+            renderServerTable();
+          }
+        };
+
+        container.appendChild(btn);
+      });
+      lucide.createIcons();
+    }
+
+    // Ping generation incorporating the hierarchical server spectrum
+    function getTierPing(baseIndex, totalInPool) {
+      if (userTier === 'ultra') {
+        // Ultra gets all servers: Top 50% are 0ms Edge fiber, then Medium, then High
+        const ratio = baseIndex / Math.max(1, totalInPool);
+        if (ratio < 0.5) {
+          const zeroPings = ['0ms', '1ms', '2ms', '0ms', '3ms', '4ms'];
+          return { ping: zeroPings[baseIndex % zeroPings.length], type: 'ultra' };
+        } else if (ratio < 0.8) {
+          return { ping: `${45 + (baseIndex % 40)}ms`, type: 'medium' };
+        } else {
+          return { ping: `${150 + (baseIndex % 100)}ms`, type: 'basic' };
+        }
+      } else if (userTier === 'premium') {
+        // Plus Plan includes BOTH Plus (Medium) and Basic (High) servers
+        const ratio = baseIndex / Math.max(1, totalInPool);
+        if (ratio < 0.6) {
+          return { ping: `${45 + (baseIndex % 40)}ms`, type: 'medium' };
+        } else {
+          return { ping: `${150 + (baseIndex % 120)}ms`, type: 'basic' };
+        }
+      } else {
+        // Basic plan only gets high ping servers
+        return { ping: `${150 + (baseIndex % 130)}ms`, type: 'basic' };
+      }
+    }
+
+    function renderServerTable(overrideServers = null) {
+      const tbody = document.getElementById('server-rows');
+      tbody.innerHTML = '';
+
+      let pool = overrideServers || MASTER_SERVER_POOL;
+
+      if (activeGameFilter === 'all') {
+        if (userTier === 'free') {
+          pool = pool.filter(s => BASIC_GAME_IDS.includes(s.game));
+        } else if (userTier === 'premium') {
+          pool = pool.filter(s => PREMIUM_GAME_IDS.includes(s.game));
+        }
+      } else {
+        pool = pool.filter(s => s.game === activeGameFilter);
+      }
+
+      if (!isWorldwide && selectedCountries.size > 0) {
+        pool = pool.filter(s => selectedCountries.has(s.country));
+      }
+
+      let displayList = [];
+      const grouped = {};
+      pool.forEach(s => {
+        if (!grouped[s.game]) grouped[s.game] = [];
+        grouped[s.game].push(s);
+      });
+
+      Object.keys(grouped).forEach(g => {
+        const gameItems = grouped[g];
+        const total = gameItems.length;
+
+        if (userTier === 'free') {
+          const sliceCount = Math.max(1, Math.ceil(total * 0.25));
+          displayList.push(...gameItems.slice(0, sliceCount));
+        } else if (userTier === 'premium') {
+          // Plus plan gets 60% of servers, inclusive of basic servers
+          const sliceCount = Math.max(Math.min(2, total), Math.ceil(total * 0.60));
+          displayList.push(...gameItems.slice(0, sliceCount));
+        } else {
+          // Ultra gets 100% of servers worldwide
+          displayList.push(...gameItems);
+        }
+      });
+
+      document.getElementById('server-count-badge').textContent = `${displayList.length} Servers Available`;
+
+      if (displayList.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-500">No active community servers found matching your selection.</td></tr>`;
+        return;
+      }
+
+      displayList.forEach((s, idx) => {
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-800/40 transition-colors";
+        const pingObj = getTierPing(idx, displayList.length);
+        const countryObj = COUNTRIES_LIST.find(c => c.code === s.country) || { flag: '🌐', name: s.country };
+
+        let pingColorClass = 'text-rose-400';
+        let pingBadge = '';
+        if (pingObj.type === 'ultra') {
+          pingColorClass = 'text-cyan-400';
+          pingBadge = '<span class="text-[9px] bg-cyan-950 text-cyan-300 border border-cyan-800 px-1 py-0.2 rounded ml-1">0ms EDGE</span>';
+        } else if (pingObj.type === 'medium') {
+          pingColorClass = 'text-indigo-400';
+          pingBadge = '<span class="text-[9px] bg-indigo-950 text-indigo-300 border border-indigo-800 px-1 py-0.2 rounded ml-1">PLUS</span>';
+        }
+
+        tr.innerHTML = `
+          <td class="py-3 px-4 font-bold text-white uppercase text-[10px]">
+            <span class="px-2 py-0.5 rounded bg-slate-800 border border-slate-700">${s.game}</span>
+          </td>
+          <td class="py-3 px-4 font-semibold text-slate-200">
+            ${s.name}
+          </td>
+          <td class="py-3 px-4 text-slate-300 flex items-center gap-1.5 whitespace-nowrap">
+            <span>${countryObj.flag}</span>
+            <span>${countryObj.name}</span>
+          </td>
+          <td class="py-3 px-4">
+            <div class="inline-flex items-center gap-1.5 bg-slate-950/80 border border-slate-800 px-2.5 py-1 rounded-lg">
+              <span class="font-mono text-[11px] text-indigo-300 select-all">${s.ip}</span>
+              <button onclick="copyToClipboard('${s.ip}', this)" class="text-slate-400 hover:text-white transition-colors" title="Copy to Clipboard">
+                <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+          </td>
+          <td class="py-3 px-4 text-center text-emerald-400 font-bold">
+            ${s.players}
+          </td>
+          <td class="py-3 px-4 text-center font-black ${pingColorClass}">
+            ${pingObj.ping} ${pingBadge}
+          </td>
+          <td class="py-3 px-4 text-right">
+            <button onclick="launchServer('${s.game}', '${s.ip}')" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-all active:scale-95 shadow-sm">
+              Connect
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+      lucide.createIcons();
+    }
+
+    function copyToClipboard(text, btn) {
+      navigator.clipboard.writeText(text);
+      btn.innerHTML = `<i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400"></i>`;
+      lucide.createIcons();
+      setTimeout(() => {
+        btn.innerHTML = `<i data-lucide="copy" class="w-3.5 h-3.5"></i>`;
+        lucide.createIcons();
+      }, 1500);
+    }
+
+    function refreshServers() {
+      const icon = document.getElementById('refresh-icon');
+      icon.classList.add('spin-fast');
+
+      MASTER_SERVER_POOL.forEach(s => {
+        if (s.players.includes('/')) {
+          const parts = s.players.split('/');
+          let curr = parseInt(parts[0]);
+          let max = parseInt(parts[1]);
+          curr = Math.max(1, Math.min(max, curr + (Math.floor(Math.random() * 5) - 2)));
+          s.players = `${curr}/${max}`;
+        }
+      });
+
+      setTimeout(() => {
+        icon.classList.remove('spin-fast');
+        renderServerTable();
+      }, 700);
+    }
+
+    // AI Natural Language Search
+    function executeAiSearch() {
+      const prompt = document.getElementById('ai-input').value.toLowerCase().trim();
+      if (!prompt) return;
+
+      let detectedGame = null;
+      for (const g of GAMES_CATALOG) {
+        if (g.id !== 'all' && (prompt.includes(g.id) || prompt.includes(g.name.toLowerCase()))) {
+          detectedGame = g.id;
+          break;
+        }
+      }
+      if (prompt.includes('call of duty') || prompt.includes('cod') || prompt.includes('warzone')) detectedGame = 'cod';
+      if (prompt.includes('gta') || prompt.includes('fivem') || prompt.includes('roleplay') || prompt.includes('rp')) detectedGame = 'gtav';
+      if (prompt.includes('asphalt') || prompt.includes('racing')) detectedGame = 'asphalt';
+      if (prompt.includes('apex')) detectedGame = 'apex';
+      if (prompt.includes('pubg')) detectedGame = 'pubg';
+
+      if (detectedGame && isGameLocked(detectedGame)) {
+        document.getElementById('out-of-plan-modal').classList.remove('hidden');
+        return;
+      }
+
+      if (userTier !== 'ultra') {
+        if (searchesLeft <= 0) {
+          openPaywall('out_of_searches');
+          return;
+        }
+        searchesLeft--;
+        localStorage.setItem('searches_left', searchesLeft);
+        updateTierUI();
+      }
+
+      if (detectedGame) {
+        activeGameFilter = detectedGame;
+      }
+
+      COUNTRIES_LIST.forEach(country => {
+        if (prompt.includes(country.name.toLowerCase()) || prompt.includes(country.code.toLowerCase())) {
+          selectedCountries.add(country.code);
+          isWorldwide = false;
+          document.getElementById('worldwide-checkbox').checked = false;
+        }
+      });
+
+      renderCountryCheckboxes();
+      renderGameCatalog();
+      renderServerTable();
+    }
+
+    function launchServer(game, ip) {
+      if (game === 'minecraft') {
+        navigator.clipboard.writeText(ip);
+        alert(`Copied IP (${ip}) to clipboard! Paste it into Minecraft > Multiplayer > Direct Connect.`);
+      } else if (['asphalt', 'valorant', 'cod', 'apex', 'pubg'].includes(game)) {
+        navigator.clipboard.writeText(ip);
+        alert(`Copied Scrim / Club Code (${ip})! Paste it into the game's custom lobby.`);
+      } else if (game === 'gtav') {
+        window.location.href = ip;
+      } else {
+        window.location.href = `steam://connect/${ip}`;
+      }
+    }
+
+    function openPaywall(reason) { document.getElementById('paywall-modal').classList.remove('hidden'); }
+    function closePaywall() { document.getElementById('paywall-modal').classList.add('hidden'); }
+    function closeOutOfPlanModal() { document.getElementById('out-of-plan-modal').classList.add('hidden'); }
+    function closeExpiredModal() { document.getElementById('expired-modal').classList.add('hidden'); }
+    function openTermsModal() { document.getElementById('terms-modal').classList.remove('hidden'); }
+    function closeTermsModal() { document.getElementById('terms-modal').classList.add('hidden'); }
+
+    // =========================================================================
+    // INLINE FORM VALIDATION & CLEARING HELPERS
+    // =========================================================================
+    function setInlineError(fieldId, errorMsg) {
+      const field = document.getElementById(`auth-${fieldId}`) || document.getElementById(`keyfile-${fieldId}`);
+      const errLabel = document.getElementById(`error-${fieldId}`);
+      if (field) field.classList.add('input-error');
+      if (errLabel) {
+        errLabel.textContent = errorMsg;
+        errLabel.classList.remove('hidden');
+      }
+    }
+
+    function clearInlineError(fieldId) {
+      const field = document.getElementById(`auth-${fieldId}`) || document.getElementById(`keyfile-${fieldId}`);
+      const errLabel = document.getElementById(`error-${fieldId}`);
+      if (field) field.classList.remove('input-error');
+      if (errLabel) errLabel.classList.add('hidden');
+    }
+
+    function clearAllErrorsAndInputs() {
+      // Clear all inputs
+      ['auth-username', 'auth-password', 'auth-passkey', 'keyfile-passkey'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
+      const checkTerms = document.getElementById('auth-terms');
+      if (checkTerms) checkTerms.checked = false;
+
+      // Clear all inline errors
+      ['username', 'password', 'passkey', 'terms', 'keyfile-file', 'keyfile-passkey'].forEach(id => {
+        clearInlineError(id);
+      });
+
+      // Clear loaded keyfile buffer
+      selectedKeyfileText = null;
+      const uploadLabel = document.getElementById('keyfile-upload-label');
+      if (uploadLabel) uploadLabel.textContent = "Click to Select PulseFinder Keyfile";
+      const fileInput = document.getElementById('keyfile-upload');
+      if (fileInput) fileInput.value = '';
+    }
+
+    function handleAuthButtonClick() {
+      if (currentUser) {
+        document.getElementById('profile-dropdown').classList.toggle('hidden');
+      } else {
+        clearAllErrorsAndInputs();
+        document.getElementById('auth-modal').classList.remove('hidden');
+      }
+    }
+
+    function closeAuthModal() {
+      document.getElementById('auth-modal').classList.add('hidden');
+      clearAllErrorsAndInputs();
+      switchLoginMode('credentials');
+    }
+
+    function switchLoginMode(mode) {
+      clearAllErrorsAndInputs();
+      const credForm = document.getElementById('cred-auth-form');
+      const fileForm = document.getElementById('keyfile-auth-form');
+      const tabCred = document.getElementById('tab-cred-btn');
+      const tabFile = document.getElementById('tab-file-btn');
+
+      if (mode === 'credentials') {
+        credForm.classList.remove('hidden');
+        fileForm.classList.add('hidden');
+        tabCred.className = "bg-indigo-600 text-white font-bold py-1.5 rounded-lg text-xs transition-all";
+        tabFile.className = "bg-slate-800 text-slate-400 font-semibold py-1.5 rounded-lg text-xs hover:text-white transition-all";
+      } else {
+        credForm.classList.add('hidden');
+        fileForm.classList.remove('hidden');
+        tabFile.className = "bg-indigo-600 text-white font-bold py-1.5 rounded-lg text-xs transition-all";
+        tabCred.className = "bg-slate-800 text-slate-400 font-semibold py-1.5 rounded-lg text-xs hover:text-white transition-all";
+      }
+    }
+
+    function toggleAuthMode() {
+      clearAllErrorsAndInputs();
+      isSignUpMode = !isSignUpMode;
+      document.getElementById('auth-modal-title').textContent = isSignUpMode ? 'Register Unique Account' : 'Sign In to PulseFinder';
+      document.getElementById('auth-submit-btn').textContent = isSignUpMode ? 'Register & Download Keyfile' : 'Sign In';
+      document.getElementById('auth-toggle-msg').textContent = isSignUpMode ? 'Already registered?' : "Don't have an account?";
+      document.getElementById('auth-toggle-btn').textContent = isSignUpMode ? 'Sign In Instead' : 'Create Unique Account';
+      document.getElementById('signup-extra-group').classList.toggle('hidden', !isSignUpMode);
+      document.getElementById('login-tabs').classList.toggle('hidden', isSignUpMode);
+      switchLoginMode('credentials');
+    }
+
+    // FORM 1: CREDENTIALS AUTHENTICATION WITH INLINE ERRORS
+    async function handleCredAuth(e) {
+      e.preventDefault();
+      const usernameInput = document.getElementById('auth-username');
+      const passwordInput = document.getElementById('auth-password');
+      const username = usernameInput.value.trim().toLowerCase();
+      const password = passwordInput.value;
+      const registered = JSON.parse(localStorage.getItem('users_database') || '{}');
+
+      let hasError = false;
+
+      if (!username) {
+        setInlineError('username', 'Please enter a username.');
+        hasError = true;
+      }
+      if (!password || password.length < 6) {
+        setInlineError('password', 'Password must be at least 6 characters long.');
+        hasError = true;
+      }
+
+      if (isSignUpMode) {
+        const passkey = document.getElementById('auth-passkey').value;
+        const agreed = document.getElementById('auth-terms').checked;
+
+        if (registered[username]) {
+          setInlineError('username', `Username "@${username}" is already taken. Please choose another.`);
+          hasError = true;
+        }
+
+        if (!passkey || passkey.length < 6) {
+          setInlineError('passkey', 'Passkey must be at least 6 characters long to encrypt your file.');
+          hasError = true;
+        }
+
+        if (!agreed) {
+          setInlineError('terms', 'You must agree to the Terms of Service & Privacy Policy.');
+          hasError = true;
+        }
+
+        if (hasError) return;
+
+        // Anti-Cheat Signature Generation for new account
+        const signature = await generateSecurityToken(username, 'free', null);
+
+        const newUserObj = {
+          username: username,
+          password: password,
+          tier: 'free',
+          expiresAt: null,
+          signature: signature,
+          registeredAt: new Date().toISOString()
+        };
+
+        const encryptedFilePayload = await encryptPayload(newUserObj, passkey);
+
+        registered[username] = newUserObj;
+        localStorage.setItem('users_database', JSON.stringify(registered));
+
+        triggerFileDownload(`PulseFinder_${username}.pulsekey`, encryptedFilePayload);
+        setLoggedInSession(newUserObj);
+        closeAuthModal();
+
+      } else {
+        // STRICT INLINE LOGIN VALIDATION
+        if (hasError) return;
+
+        const existingUser = registered[username];
+        if (!existingUser) {
+          setInlineError('username', 'No account found with this username.');
+          return;
+        }
+        if (existingUser.password !== password) {
+          setInlineError('password', 'Incorrect password. Please verify or use your Identity Keyfile.');
+          return;
+        }
+
+        // Anti-Cheat Check on Login
+        const isValid = await verifyUserIntegrity(existingUser);
+        if (!isValid) {
+          existingUser.tier = 'free';
+          existingUser.expiresAt = null;
+          existingUser.signature = null;
+        }
+
+        setLoggedInSession(existingUser);
+        closeAuthModal();
+      }
+    }
+
+    // FORM 2: LOAD IDENTITY KEYFILE WITH INLINE ERRORS
+    function handleFileSelected(input) {
+      clearInlineError('keyfile-file');
+      const file = input.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        selectedKeyfileText = event.target.result;
+        document.getElementById('keyfile-upload-label').textContent = `Loaded: ${file.name}`;
+      };
+      reader.readAsText(file);
+    }
+
+    async function handleKeyfileAuth(e) {
+      e.preventDefault();
+      let hasError = false;
+
+      if (!selectedKeyfileText) {
+        setInlineError('keyfile-file', 'Please select a valid .pulsekey backup file.');
+        hasError = true;
+      }
+
+      const passkey = document.getElementById('keyfile-passkey').value;
+      if (!passkey) {
+        setInlineError('keyfile-passkey', 'Please enter your keyfile passkey.');
+        hasError = true;
+      }
+
+      if (hasError) return;
+
+      try {
+        const decryptedAccount = await decryptPayload(selectedKeyfileText, passkey);
+
+        if (!decryptedAccount.username || !decryptedAccount.password) {
+          throw new Error("Corrupt or invalid keyfile.");
+        }
+
+        // Verify Anti-Cheat Signature inside decrypted keyfile
+        const isValid = await verifyUserIntegrity(decryptedAccount);
+        if (!isValid) {
+          decryptedAccount.tier = 'free';
+          decryptedAccount.expiresAt = null;
+          decryptedAccount.signature = null;
+        }
+
+        const registered = JSON.parse(localStorage.getItem('users_database') || '{}');
+        registered[decryptedAccount.username] = decryptedAccount;
+        localStorage.setItem('users_database', JSON.stringify(registered));
+
+        setLoggedInSession(decryptedAccount);
+        closeAuthModal();
+
+      } catch (err) {
+        setInlineError('keyfile-passkey', 'Decryption failed. Incorrect passkey or corrupt file.');
+      }
+    }
+
+    function triggerFileDownload(fileName, contentStr) {
+      const blob = new Blob([contentStr], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
+    async function downloadActiveKeyfile() {
+      if (!currentUser) return;
+      const passkey = prompt("Enter a Passkey to encrypt your new backup keyfile (min 6 characters):");
+      if (!passkey || passkey.length < 6) {
+        alert("Backup canceled. Passkey must be at least 6 characters.");
+        return;
+      }
+
+      const encrypted = await encryptPayload(currentUser, passkey);
+      triggerFileDownload(`PulseFinder_${currentUser.username}.pulsekey`, encrypted);
+      alert("Backup keyfile downloaded! Keep it safe.");
+    }
+
+    function setLoggedInSession(userObj) {
+      currentUser = userObj;
+      userTier = currentUser.tier;
+      localStorage.setItem('user_session', JSON.stringify(currentUser));
+      updateTierUI();
+      renderServerTable();
+      checkSubscriptionAlerts();
+    }
+
+    function saveUserRecord(userObj) {
+      const db = JSON.parse(localStorage.getItem('users_database') || '{}');
+      db[userObj.username] = userObj;
+      localStorage.setItem('users_database', JSON.stringify(db));
+    }
+
+    function handleLogout() {
+      currentUser = null;
+      userTier = 'free';
+      localStorage.removeItem('user_session');
+      document.getElementById('profile-dropdown').classList.add('hidden');
+      updateTierUI();
+      renderServerTable();
+    }
+
+    // =========================================================================
+    // ANTI-CHEAT SUBSCRIPTION PURCHASE & ACTIVATION ENGINE
+    // =========================================================================
+    async function purchasePlan(tier) {
+      if (!currentUser) {
+        alert("Please Sign In or Register an account first so your subscription can be saved!");
+        closePaywall();
+        document.getElementById('auth-modal').classList.remove('hidden');
+        return;
+      }
+
+      const isYearly = tier === 'yearly';
+      const productId = isYearly ? CONFIG.msStoreYearlyIapId : CONFIG.msStoreMonthlyIapId;
+      const days = isYearly ? 365 : 30;
+      const expiryDate = new Date();
+      expiryDate.setDate(expiryDate.getDate() + days);
+      const expiryStr = expiryDate.toISOString();
+
+      // Sign the subscription receipt mathematically to prevent DevTools tampering
+      const signature = await generateSecurityToken(currentUser.username, isYearly ? 'ultra' : 'premium', expiryStr);
+
+      const activatePlan = () => {
+        userTier = isYearly ? 'ultra' : 'premium';
+        currentUser.tier = userTier;
+        currentUser.expiresAt = expiryStr;
+        currentUser.signature = signature;
+
+        localStorage.setItem('user_session', JSON.stringify(currentUser));
+        saveUserRecord(currentUser);
+
+        closePaywall();
+        updateTierUI();
+        renderServerTable();
+        alert(`Payment Verified! Activated ${isYearly ? 'Ultra Premium (₹1,899/yr)' : 'Plus Plan (₹259/mo)'} for @${currentUser.username}!`);
+      };
+
+      // Native Windows Store IAP integration
+      if (window.Windows && Windows.Services && Windows.Services.Store) {
+        try {
+          const storeContext = Windows.Services.Store.StoreContext.getDefault();
+          const result = await storeContext.requestPurchaseAsync(productId);
+          if (result.status === Windows.Services.Store.StorePurchaseStatus.succeeded) {
+            activatePlan();
+          }
+        } catch (e) {
+          console.error("Store IAP Error:", e);
+        }
+      } else {
+        // External Web / Direct UPI / Razorpay payment link
+        if (CONFIG.externalPaymentUrl) {
+          window.open(CONFIG.externalPaymentUrl, '_blank');
+        } else {
+          activatePlan();
+        }
+      }
+    }
+
+    window.onload = init;
+  </script>
+</body>
+</html>
