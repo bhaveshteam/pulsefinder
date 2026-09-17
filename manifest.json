@@ -1,0 +1,24 @@
+{
+  "name": "PulseFinder — Community Server Discovery",
+  "short_name": "PulseFinder",
+  "description": "Universal community multiplayer game server discovery directory for 60+ popular titles across 240+ global regions.",
+  "id": "/pulsefinder/",
+  "start_url": "https://bhaveshteam.github.io/pulsefinder/",
+  "scope": "/pulsefinder/",
+  "display": "standalone",
+  "display_override": [
+    "window-controls-overlay"
+  ],
+  "orientation": "any",
+  "dir": "ltr",
+  "theme_color": "#4f46e5",
+  "background_color": "#080c14",
+  "icons": [
+    {
+      "src": "icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
