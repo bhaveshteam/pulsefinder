@@ -1,11 +1,15 @@
-\<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en" class="dark select-none">
 <head>
   <meta charset="UTF-8" />
-  <link rel="manifest" href="manifest.json" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>PulseFinder — Community Server Discovery</title>
   
+  <!-- PWA Manifest & App Icon Link -->
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" type="image/png" href="icon-512x512.png" />
+  <meta name="theme-color" content="#4f46e5" />
+
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -216,9 +220,7 @@
     </div>
   </main>
 
-  <!-- ================================================================= -->
-  <!-- AUTHENTICATION MODAL (With In-Line Error Messages & Form Clearing) -->
-  <!-- ================================================================= -->
+  <!-- AUTHENTICATION MODAL -->
   <div id="auth-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 hidden">
     <div class="bg-slate-900 border border-slate-800 max-w-md w-full rounded-2xl overflow-hidden shadow-2xl p-6 relative">
       <button onclick="closeAuthModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg">
@@ -316,7 +318,7 @@
         <i data-lucide="lock" class="w-6 h-6"></i>
       </div>
       <h3 class="text-base font-black text-white">Out of Plan Request</h3>
-      <p class="text-xs text-slate-300 mt-2">the server you are searchning for is not in your plan please upgrade your plan</p>
+      <p class="text-xs text-slate-300 mt-2">The server you are searching for is not included in your current tier. Upgrade your plan to access this server.</p>
       <p class="text-[10px] text-slate-500 mt-1">Your daily search balance was not deducted.</p>
       <div class="flex gap-2 mt-5">
         <button onclick="closeOutOfPlanModal()" class="w-1/2 bg-slate-800 hover:bg-slate-700 text-slate-300 py-2 rounded-xl text-xs font-semibold">Dismiss</button>
@@ -445,16 +447,14 @@
     // MANUAL EDIT CONFIGURATION (Set your Store / Payment gateway links here)
     // =========================================================================
     const CONFIG = {
-      // 1. Microsoft Store Add-On Product IDs (Create in Microsoft Partner Center)
+      // 1. Microsoft Store Add-On Product IDs (Configured in Microsoft Partner Center)
       msStoreMonthlyIapId: "pulsefinder_monthly_259",
       msStoreYearlyIapId: "pulsefinder_yearly_1899",
 
       // 2. Direct External Payment URL (Optional: Razorpay / Stripe payment link)
-      // Example: "https://rzp.io/l/yourpaymentlink"
       externalPaymentUrl: "",
 
       // 3. Secret Cryptographic Salt for Anti-Cheat Signature Verification
-      // Change this to your own random secret string before publishing!
       securitySalt: "PulseFinder_Bhavesh_SecretSalt_2026_x99!"
     };
 
@@ -799,7 +799,6 @@
       const quotaText = document.getElementById('search-quota-text');
       const unlimitedBtn = document.getElementById('get-unlimited-btn');
       const topAd = document.getElementById('top-ad-banner');
-      const bottomAd = document.getElementById('bottom-ad-bar');
       const accessInfo = document.getElementById('tier-game-access-text');
       const pingIndicator = document.getElementById('ping-quality-indicator');
       const authBtnText = document.getElementById('auth-btn-text');
@@ -904,10 +903,8 @@
       lucide.createIcons();
     }
 
-    // Ping generation incorporating the hierarchical server spectrum
     function getTierPing(baseIndex, totalInPool) {
       if (userTier === 'ultra') {
-        // Ultra gets all servers: Top 50% are 0ms Edge fiber, then Medium, then High
         const ratio = baseIndex / Math.max(1, totalInPool);
         if (ratio < 0.5) {
           const zeroPings = ['0ms', '1ms', '2ms', '0ms', '3ms', '4ms'];
@@ -918,7 +915,6 @@
           return { ping: `${150 + (baseIndex % 100)}ms`, type: 'basic' };
         }
       } else if (userTier === 'premium') {
-        // Plus Plan includes BOTH Plus (Medium) and Basic (High) servers
         const ratio = baseIndex / Math.max(1, totalInPool);
         if (ratio < 0.6) {
           return { ping: `${45 + (baseIndex % 40)}ms`, type: 'medium' };
@@ -926,7 +922,6 @@
           return { ping: `${150 + (baseIndex % 120)}ms`, type: 'basic' };
         }
       } else {
-        // Basic plan only gets high ping servers
         return { ping: `${150 + (baseIndex % 130)}ms`, type: 'basic' };
       }
     }
@@ -966,11 +961,9 @@
           const sliceCount = Math.max(1, Math.ceil(total * 0.25));
           displayList.push(...gameItems.slice(0, sliceCount));
         } else if (userTier === 'premium') {
-          // Plus plan gets 60% of servers, inclusive of basic servers
           const sliceCount = Math.max(Math.min(2, total), Math.ceil(total * 0.60));
           displayList.push(...gameItems.slice(0, sliceCount));
         } else {
-          // Ultra gets 100% of servers worldwide
           displayList.push(...gameItems);
         }
       });
@@ -1064,7 +1057,6 @@
       }, 700);
     }
 
-    // AI Natural Language Search
     function executeAiSearch() {
       const prompt = document.getElementById('ai-input').value.toLowerCase().trim();
       if (!prompt) return;
@@ -1135,9 +1127,6 @@
     function openTermsModal() { document.getElementById('terms-modal').classList.remove('hidden'); }
     function closeTermsModal() { document.getElementById('terms-modal').classList.add('hidden'); }
 
-    // =========================================================================
-    // INLINE FORM VALIDATION & CLEARING HELPERS
-    // =========================================================================
     function setInlineError(fieldId, errorMsg) {
       const field = document.getElementById(`auth-${fieldId}`) || document.getElementById(`keyfile-${fieldId}`);
       const errLabel = document.getElementById(`error-${fieldId}`);
@@ -1156,7 +1145,6 @@
     }
 
     function clearAllErrorsAndInputs() {
-      // Clear all inputs
       ['auth-username', 'auth-password', 'auth-passkey', 'keyfile-passkey'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.value = '';
@@ -1164,12 +1152,10 @@
       const checkTerms = document.getElementById('auth-terms');
       if (checkTerms) checkTerms.checked = false;
 
-      // Clear all inline errors
       ['username', 'password', 'passkey', 'terms', 'keyfile-file', 'keyfile-passkey'].forEach(id => {
         clearInlineError(id);
       });
 
-      // Clear loaded keyfile buffer
       selectedKeyfileText = null;
       const uploadLabel = document.getElementById('keyfile-upload-label');
       if (uploadLabel) uploadLabel.textContent = "Click to Select PulseFinder Keyfile";
@@ -1224,7 +1210,6 @@
       switchLoginMode('credentials');
     }
 
-    // FORM 1: CREDENTIALS AUTHENTICATION WITH INLINE ERRORS
     async function handleCredAuth(e) {
       e.preventDefault();
       const usernameInput = document.getElementById('auth-username');
@@ -1265,7 +1250,6 @@
 
         if (hasError) return;
 
-        // Anti-Cheat Signature Generation for new account
         const signature = await generateSecurityToken(username, 'free', null);
 
         const newUserObj = {
@@ -1287,7 +1271,6 @@
         closeAuthModal();
 
       } else {
-        // STRICT INLINE LOGIN VALIDATION
         if (hasError) return;
 
         const existingUser = registered[username];
@@ -1300,7 +1283,6 @@
           return;
         }
 
-        // Anti-Cheat Check on Login
         const isValid = await verifyUserIntegrity(existingUser);
         if (!isValid) {
           existingUser.tier = 'free';
@@ -1313,7 +1295,6 @@
       }
     }
 
-    // FORM 2: LOAD IDENTITY KEYFILE WITH INLINE ERRORS
     function handleFileSelected(input) {
       clearInlineError('keyfile-file');
       const file = input.files[0];
@@ -1351,7 +1332,6 @@
           throw new Error("Corrupt or invalid keyfile.");
         }
 
-        // Verify Anti-Cheat Signature inside decrypted keyfile
         const isValid = await verifyUserIntegrity(decryptedAccount);
         if (!isValid) {
           decryptedAccount.tier = 'free';
@@ -1419,7 +1399,7 @@
     }
 
     // =========================================================================
-    // ANTI-CHEAT SUBSCRIPTION PURCHASE & ACTIVATION ENGINE
+    // ANTI-CHEAT SUBSCRIPTION PURCHASE & ACTIVATION ENGINE (SECURED)
     // =========================================================================
     async function purchasePlan(tier) {
       if (!currentUser) {
@@ -1436,7 +1416,6 @@
       expiryDate.setDate(expiryDate.getDate() + days);
       const expiryStr = expiryDate.toISOString();
 
-      // Sign the subscription receipt mathematically to prevent DevTools tampering
       const signature = await generateSecurityToken(currentUser.username, isYearly ? 'ultra' : 'premium', expiryStr);
 
       const activatePlan = () => {
@@ -1455,22 +1434,28 @@
       };
 
       // Native Windows Store IAP integration
-      if (window.Windows && Windows.Services && Windows.Services.Store) {
+      if (typeof window.Windows !== 'undefined' && window.Windows?.Services?.Store?.StoreContext) {
         try {
-          const storeContext = Windows.Services.Store.StoreContext.getDefault();
+          const storeContext = window.Windows.Services.Store.StoreContext.getDefault();
           const result = await storeContext.requestPurchaseAsync(productId);
-          if (result.status === Windows.Services.Store.StorePurchaseStatus.succeeded) {
+          if (result.status === window.Windows.Services.Store.StorePurchaseStatus.succeeded) {
             activatePlan();
+          } else if (result.status === window.Windows.Services.Store.StorePurchaseStatus.userCanceled) {
+            alert("Transaction was canceled.");
+          } else {
+            alert("Payment could not be verified by the Microsoft Store.");
           }
         } catch (e) {
           console.error("Store IAP Error:", e);
+          alert("Could not connect to Microsoft Store billing.");
         }
       } else {
         // External Web / Direct UPI / Razorpay payment link
         if (CONFIG.externalPaymentUrl) {
           window.open(CONFIG.externalPaymentUrl, '_blank');
         } else {
-          activatePlan();
+          // 🔒 BLOCKS WEB BROWSERS: Prevents any unauthenticated free bypass
+          alert("Subscriptions can only be purchased inside the official PulseFinder Windows App.\n\nPlease download and launch PulseFinder through the Microsoft Store to activate your plan.");
         }
       }
     }
