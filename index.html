@@ -444,17 +444,12 @@
 
   <script>
     // =========================================================================
-    // MANUAL EDIT CONFIGURATION (Set your Store / Payment gateway links here)
+    // CONFIGURATION
     // =========================================================================
     const CONFIG = {
-      // 1. Microsoft Store Add-On Product IDs (Configured in Microsoft Partner Center)
       msStoreMonthlyIapId: "pulsefinder_monthly_259",
       msStoreYearlyIapId: "pulsefinder_yearly_1899",
-
-      // 2. Direct External Payment URL (Optional: Razorpay / Stripe payment link)
       externalPaymentUrl: "",
-
-      // 3. Secret Cryptographic Salt for Anti-Cheat Signature Verification
       securitySalt: "PulseFinder_Bhavesh_SecretSalt_2026_x99!"
     };
 
@@ -541,8 +536,8 @@
       { id: 'fallguys', name: 'Fall Guys Custom Shows' }
     ];
 
-    const BASIC_GAME_IDS = GAMES_CATALOG.slice(1, 6).map(g => g.id); // 5 games
-    const PREMIUM_GAME_IDS = GAMES_CATALOG.slice(1, 31).map(g => g.id); // 30 games
+    const BASIC_GAME_IDS = GAMES_CATALOG.slice(1, 6).map(g => g.id);
+    const PREMIUM_GAME_IDS = GAMES_CATALOG.slice(1, 31).map(g => g.id);
 
     const MASTER_SERVER_POOL = [
       { game: 'asphalt', name: 'Mumbai Elite Racers Club Lobby #01', country: 'IN', ip: 'ASPHALT-IN-CLUB-01', players: '8/8' },
@@ -620,7 +615,6 @@
       return expectedToken === userObj.signature;
     }
 
-    // WebCrypto AES-GCM Keyfile Derivation
     async function deriveKey(passkey, salt) {
       const enc = new TextEncoder();
       const keyMaterial = await crypto.subtle.importKey(
@@ -702,7 +696,6 @@
     let selectedCountries = new Set();
 
     async function init() {
-      // Anti-Cheat Audit: Verify that localStorage was not tampered with
       if (currentUser && currentUser.tier !== 'free') {
         const isValid = await verifyUserIntegrity(currentUser);
         if (!isValid) {
@@ -1399,7 +1392,7 @@
     }
 
     // =========================================================================
-    // ANTI-CHEAT SUBSCRIPTION PURCHASE & ACTIVATION ENGINE (SECURED)
+    // NATIVE MICROSOFT STORE DIGITAL GOODS & PAYMENT CONTROLLER
     // =========================================================================
     async function purchasePlan(tier) {
       if (!currentUser) {
@@ -1433,31 +1426,66 @@
         alert(`Payment Verified! Activated ${isYearly ? 'Ultra Premium (₹1,899/yr)' : 'Plus Plan (₹259/mo)'} for @${currentUser.username}!`);
       };
 
-      // Native Windows Store IAP integration
+      // 1. PRIMARY: Digital Goods API (Official PWA standard for Microsoft Store)
+      if ('getDigitalGoodsService' in window) {
+        try {
+          const digitalGoodsService = await window.getDigitalGoodsService('https://store.microsoft.com/billing');
+          
+          if (digitalGoodsService) {
+            const paymentMethodData = [{
+              supportedMethods: 'https://store.microsoft.com/billing',
+              data: { sku: productId }
+            }];
+
+            const paymentDetails = {
+              total: {
+                label: isYearly ? 'PulseFinder Ultra (1 Year)' : 'PulseFinder Plus (1 Month)',
+                amount: { currency: 'INR', value: isYearly ? '1899.00' : '259.00' }
+              }
+            };
+
+            const request = new PaymentRequest(paymentMethodData, paymentDetails);
+            const paymentResponse = await request.show();
+
+            // Completed successfully through Windows Store billing dialog
+            await paymentResponse.complete('success');
+            activatePlan();
+            return;
+          }
+        } catch (err) {
+          console.error("Digital Goods / PaymentRequest error:", err);
+          if (err.name === 'AbortError') {
+            alert("Transaction was canceled.");
+            return;
+          }
+        }
+      }
+
+      // 2. SECONDARY: Legacy Windows StoreContext (In case of older UWP runtime)
       if (typeof window.Windows !== 'undefined' && window.Windows?.Services?.Store?.StoreContext) {
         try {
           const storeContext = window.Windows.Services.Store.StoreContext.getDefault();
           const result = await storeContext.requestPurchaseAsync(productId);
           if (result.status === window.Windows.Services.Store.StorePurchaseStatus.succeeded) {
             activatePlan();
+            return;
           } else if (result.status === window.Windows.Services.Store.StorePurchaseStatus.userCanceled) {
             alert("Transaction was canceled.");
-          } else {
-            alert("Payment could not be verified by the Microsoft Store.");
+            return;
           }
         } catch (e) {
-          console.error("Store IAP Error:", e);
-          alert("Could not connect to Microsoft Store billing.");
-        }
-      } else {
-        // External Web / Direct UPI / Razorpay payment link
-        if (CONFIG.externalPaymentUrl) {
-          window.open(CONFIG.externalPaymentUrl, '_blank');
-        } else {
-          // 🔒 BLOCKS WEB BROWSERS: Prevents any unauthenticated free bypass
-          alert("Subscriptions can only be purchased inside the official PulseFinder Windows App.\n\nPlease download and launch PulseFinder through the Microsoft Store to activate your plan.");
+          console.error("Legacy StoreContext error:", e);
         }
       }
+
+      // 3. TERTIARY: Optional External Gateway (if configured in CONFIG)
+      if (CONFIG.externalPaymentUrl) {
+        window.open(CONFIG.externalPaymentUrl, '_blank');
+        return;
+      }
+
+      // 4. BLOCK STANDARD WEB BROWSERS (Chrome, Safari, standard Edge)
+      alert("In-app upgrades are processed through the official Microsoft Store billing engine.\n\nPlease launch PulseFinder from your Windows Start Menu (installed from Microsoft Store) to upgrade your account.");
     }
 
     window.onload = init;
